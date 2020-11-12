@@ -26,91 +26,64 @@
 #
 #
 # Author: Gonzales Loayza Pool Diego
-# Date: 03/09/2020
+# Date: 11/11/2020
 #    
 #------------------------------------------------------------------------------
 include sources.mk
 
-# Platform Overrides
-PLATFORM = HOST
-
-# General flags
-GEN_FLAGS = -Wall \
-	        -Werror \
-	        -g \
-			-O0 \
-	    	-std=c99
-
-# Target
-TARGET = c1m2
-
-# Architectures Specific Flags
-LINKER_FILE = ../msp432p401r.lds 
-CPU = cortex-m4
-ARCH = thumb
-SPECS = nosys.specs
-
-# Compiler Flags and Defines
-LD = arm-none-eabi-ld
-
-ifeq ($(PLATFORM),HOST)
-	CC = gcc $(GENFLAGS)
-	CFLAGS = -D$(PLATFORM)
-	LDFLAGS = -Wl,-Map=$(TARGET).map 
-	SIZE = size
-endif
-
 ifeq ($(PLATFORM),MSP432)
-   	CC = arm-none-eabi-gcc $(GENFLAGS)
-	CFLAGS = -D$(PLATFORM) -mcpu=$(CPU) -m$(ARCH) -march=armv7e-m -mfloat-abi=hard -mfpu=fpv4-sp-d16 --specs=$(SPECS)
-	LDFLAGS = -T $(LINKER_FILE) -Wl,-Map=$(TARGET).map 
-	SIZE = arm-none-eabi-size
+		CC = arm-none-eabi-gcc
+		LD = arm-none-eabi-ld
+		LINKER_FILE = msp432p401r.lds
+		LDFLAGS = -Wl,-Map=$(TARGET).map -T $(LINKER_FILE)
+
+		CPU = cortex-m4
+		ARCH = thumb
+		SPECS = nosys.specs
+		FPU = fpv4-sp-d16
+		ARMFLAGS = -mcpu=$(CPU) -m$(ARCH) --specs=$(SPECS) -march=armv7e-m -mfloat-abi=hard -mfpu=$(FPU)		
+		OBJDUMP = arm-none-eabi-objdump
+
+		SIZE = arm-none-eabi-size 
+else
+		CC = gcc
+		LD = ld
+
+		SIZE = size
+		LDFLAGS = -Wl,-Map=$(TARGET).map
+		OBJDUMP = objdump
 endif
+
+VPATH = ./src
+ 
+ifeq ($(VERBOSE),VERBOSE)
+	VER = -g
+endif
+
+TARGET = final
+CFLAGS = -Wall -Werror $(VER) -O0 -std=c99 $(INCLUDEHEADER) -D$(PLATFORM) $(ARMFLAGS) -D$(VERBOSE) -D$(COURSE1)
+CPPFLAGS = -E
+MAIN = main
 
 OBJS = $(SOURCES:.c=.o)
-MAPS = $(SOURCES:.C=.map)
-OUTS = $(SOURCES:.C=.out)
+PREPRO = $(SOURCES:.c=.i)
 ASMS = $(SOURCES:.c=.asm)
-DEPNS = $(SOURCES:.c=.d)                          
+DEPS = $(SOURCES:.c=.d)
+FILES = *.asm *.i *.o *.d
 
 %.o : %.c
-	$(CC) $(INCLUDES) -c $< $(CFLAGS) -o $@
-
-%.i : %.c
-	$(CC) -E $< $(INCLUDES) $(CFLAGS)
-
-%.d: %.c
-	@set -e; rm -f $@; \
-	$(CC) $(INCLUDES) -MM $(CFLAGS) $< > $@.$$$$; \
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$
-
-%.asm : %.c
-	$(CC) -S $< $(INCLUDES) $(CFLAGS)
-
-
-.PHONY: build
-build: all
-
-.PHONY: all
-all: $(TARGET).out $(DEPNS)
-
-$(TARGET).out: $(OBJS)
-	$(CC) $(INCLUDES) $(OBJS) $(CFLAGS)  $(LDFLAGS) -o $@
-	$(SIZE) -Atd $(OBJS) $(TARGET).out
-
-$(DEPNS): $(SOURCES)
-	@set -e; rm -f $@; \
-	$(CC) $(INCLUDES) -MM $(CFLAGS) $< > $@.$$$$; \
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$
-
+	$(CC) -c $< $(CFLAGS) -o $@
 
 .PHONY: compile-all
-compile-all:
-	$(CC) $(INCLUDES) -c $(SOURCES) $(CFLAGS)
+compile-all: $(OBJS)
+	$(CC) $(INCLUDES) $(OBJS) -c $(CFLAGS) -o $(TARGET).o
 
+.PHONY: build
+build: $(TARGET).out  
+
+$(TARGET).out: $(OBJS) 
+	$(CC) $(CFLAGS) $(INCLUDES) $(LDFLAGS) -o $@ $(OBJS)
 
 .PHONY: clean
 clean:
-	rm -f *.asm *.o *.d *.map *.out *.i *.size
+	rm -f $(TARGET).asm $(FILES) $(TARGET).out $(TARGET).map $(PREPRO) $(ASMS) $(DEPS) $(OBJS)

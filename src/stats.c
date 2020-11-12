@@ -22,32 +22,18 @@
  * 
  *
  * @author Pool Diego Gonzales Loayza
- * @date 26/06/2020 
+ * @date 11/11/2020 
  *
  */
 
 
-
+#include <stddef.h>
 #include <stdio.h>
 #include "stats.h"
+#include "platform.h"
 
 /* Size of the Data Set */
 #define SIZE (40)
-
-void main() {
-
-  unsigned char test[SIZE] = { 34, 201, 190, 154,   8, 194,   2,   6,
-                              114, 88,   45,  76, 123,  87,  25,  23,
-                              200, 122, 150, 90,   92,  87, 177, 244,
-                              201,   6,  12,  60,   8,   2,   5,  67,
-                                7,  87, 250, 230,  99,   3, 100,  90};
-
-  /* Other Variable Declarations Go Here */
-  /* Statistics and Printing Functions Go Here */
-  print_array(test,SIZE);
-  print_statistics(test,SIZE);
-  printf("\n\n");
-}
 
 /* Add other Implementation File Code Here */
 void sort_array(unsigned char *array, int size){
@@ -85,11 +71,18 @@ unsigned char find_median(unsigned char *array, int size){
 
 void print_array(unsigned char *array, int size){
   int i;
-  printf("The array is:\n[");
+  #if !defined (VERBOSE) && defined (HOST)
+  #undef PRINTF
+  #define PRINTF(...)
+  #endif
+  PRINTF("The array is:\n[");
   for(i=0; i<size; i++)
-    printf("%d ",*(array+i));
-
-  printf("]");
+    PRINTF("%d ",*(array+i));
+  PRINTF("]\n");
+  #if defined (VERBOSE) && defined (HOST)
+  #undef PRINTF
+  #define PRINTF(...) printf(__VA_ARGS__)
+  #endif
 }
 
 
